@@ -47,7 +47,7 @@ DateToString = function (today) {
 }
 
 findWord = function (word, str) {
-    return str.split(' ').some(function (w) { return w === word })
+    return str.split(' ').some(function (w) { return w.toUpperCase() === word.toUpperCase() })
 }
 
 $('#input-excel').change(function (e) {
@@ -58,7 +58,9 @@ $('#input-excel').change(function (e) {
         var data = new Uint8Array(reader.result);
         var workbook = XLSX.read(data, { type: 'array' });
         var sheet = workbook.Sheets[workbook.SheetNames[0]];
+        // console.log(sheet);
         var sheet_json = XLSX.utils.sheet_to_json(sheet);
+        console.log(sheet_json);
 
         var el = sheet_json[0];
         Object.keys(el).forEach(function (key, index) {
@@ -68,6 +70,8 @@ $('#input-excel').change(function (e) {
                 barcode_column = key;
             if (findWord('MFD', key) || findWord('Yrmonth', key))
                 date_column = key;
+            if (findWord('QTY', key))
+                qty_column = key;
         });
 
         if (barcode_column === 'z')
@@ -76,18 +80,21 @@ $('#input-excel').change(function (e) {
             alert(`Date Column not found. Should have the word "MFD".`);
         if (price_column === 'z')
             alert(`MRP column not found. Should have the word "MRP".`)
+        if (qty_column === 'z')
+            alert(`Quantity column not found. Should have the word "QTY".`)
 
-        if(barcode_column === 'z' || date_column === 'z' || price_column === 'z')
+        if(barcode_column === 'z' || date_column === 'z' || price_column === 'z' || qty_column === 'z')
             return;
 
         console.log(`barcode_column: ${barcode_column}`);
         console.log(`date_column: ${date_column}`);
         console.log(`price_column: ${price_column}`);
+        console.log(`qty_column: ${qty_column}`);
 
         sheet_json.forEach(el => {
             // console.log(el);
-            const master_key = el[barcode_column];
             el[barcode_column] = el[barcode_column].toString();
+            const master_key = el[barcode_column];
             el[date_column] = DateToString(ExcelDateToJSDate(el[date_column]));
             el[price_column] = parseFloat(el[price_column]).toFixed(2);
             el[collect_column] = "";
