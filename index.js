@@ -1,3 +1,4 @@
+var master = {};
 $('#input-excel').change(function (e) {
     var reader = new FileReader();
 
@@ -11,24 +12,42 @@ $('#input-excel').change(function (e) {
         var mySheet = workbook.Sheets[workbook.SheetNames[0]];
         var sheet_json = XLSX.utils.sheet_to_json(mySheet);
 
+        
+        sheet_json.forEach(el => {
+            // console.log(el);
+            const master_key = el['COMPANY NAME'] + '-' + el['BARCODE'];
+            el['BARCODE'] = el['BARCODE'].toString();
+            el['DATE'] = DateToString(ExcelDateToJSDate(el['DATE']));
+            el['PRICE'] = el['PRICE'].toString();
+            addToMaster(master_key, el);
+        });
+        
+        // console.log(sheet_json);
+        // console.log(master);
 
-        var row_count = sheet_json.length;
-        var date_format = 'dd/mm/yyyy';
-        var date_column = 'G';
-        var price_column = 'F';
-        var new_sheet = XLSX.utils.json_to_sheet(sheet_json);
+        var new_json = [];
 
-        for (let i = 2; i <= row_count + 1; i++) {
-            string_date = ExcelDateToJSDate(new_sheet[date_column + i].v);
-            new_sheet[date_column + i].t = 's';
-            new_sheet[date_column + i].v = DateToString(string_date);
-            // console.log(new_sheet[date_column + i]);
+        for(var key in master) {
+            new_json.push(master[key]);
         }
+        // console.log(new_json);
+        // var row_count = sheet_json.length;
+        // var date_format = 'dd/mm/yyyy';
+        // var date_column = 'G';
+        // var price_column = 'F';
+        var new_sheet = XLSX.utils.json_to_sheet(new_json);
 
-        for (let i = 2; i <= row_count + 1; i++) {
-            new_sheet[price_column + i].v = new_sheet[price_column + i].v.toString() + '.00';
-            new_sheet[price_column + i].t = 's';
-        }
+        // for (let i = 2; i <= row_count + 1; i++) {
+        //     string_date = ExcelDateToJSDate(new_sheet[date_column + i].v);
+        //     new_sheet[date_column + i].t = 's';
+        //     new_sheet[date_column + i].v = DateToString(string_date);
+        //     // console.log(new_sheet[date_column + i]);
+        // }
+
+        // for (let i = 2; i <= row_count + 1; i++) {
+        //     new_sheet[price_column + i].v = new_sheet[price_column + i].v.toString() + '.00';
+        //     new_sheet[price_column + i].t = 's';
+        // }
 
         var new_workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(new_workbook, new_sheet, "New Sheet");
@@ -45,6 +64,13 @@ $('#input-excel').change(function (e) {
         saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), 'test.xlsx');
     }
 });
+
+addToMaster = function(master_key, el) {
+    if(master_key in master) {
+        master[master_key]['QTY'] += el['QTY'];
+    } else
+        master[master_key] = el;
+}
 
 ExcelDateToJSDate = function (serial) {
     var utc_days = Math.floor(serial - 25569);
