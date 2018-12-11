@@ -1,8 +1,14 @@
 var master = {};
+var barcode_column = 'z';
+var date_column = 'z';
+var price_column = 'z';
+var qty_column = 'z';
+var collect_column = 'Collection';
 
 addToMaster = function (master_key, el) {
     if (master_key in master) {
-        master[master_key]['QTY'] += el['QTY'];
+        master[master_key][qty_column] += el[qty_column];
+        master[master_key][collect_column] = "TRUE";
     } else
         master[master_key] = el;
 }
@@ -54,26 +60,25 @@ $('#input-excel').change(function (e) {
         var sheet = workbook.Sheets[workbook.SheetNames[0]];
         var sheet_json = XLSX.utils.sheet_to_json(sheet);
 
-        var barcode_column = 'z';
-        var date_column = 'z';
-        var price_column = 'z';
-
         var el = sheet_json[0];
         Object.keys(el).forEach(function (key, index) {
-            if (findWord('MRP', el))
-                price_column = el;
-            if (findWord('EAN', el))
-                barcode_column = el;
-            if (findWord('MFD', el))
-                date_column = el;
+            if (findWord('MRP', key))
+                price_column = key;
+            if (findWord('EAN', key))
+                barcode_column = key;
+            if (findWord('MFD', key) || findWord('Yrmonth', key))
+                date_column = key;
         });
 
         if (barcode_column === 'z')
-            console.log(`Barcode Column not found. Should have the work "EAN".`);
+            alert(`Barcode Column not found. Should have the work "EAN".`);
         if (date_column === 'z')
-            console.log(`Date Column not found. Should have the word "MFD".`);
+            alert(`Date Column not found. Should have the word "MFD".`);
         if (price_column === 'z')
-            console.log(`MRP column not found. Should have the word "MRP".`)
+            alert(`MRP column not found. Should have the word "MRP".`)
+
+        if(barcode_column === 'z' || date_column === 'z' || price_column === 'z')
+            return;
 
         console.log(`barcode_column: ${barcode_column}`);
         console.log(`date_column: ${date_column}`);
@@ -85,6 +90,7 @@ $('#input-excel').change(function (e) {
             el[barcode_column] = el[barcode_column].toString();
             el[date_column] = DateToString(ExcelDateToJSDate(el[date_column]));
             el[price_column] = parseFloat(el[price_column]).toFixed(2);
+            el[collect_column] = "";
             addToMaster(master_key, el);
         });
 
