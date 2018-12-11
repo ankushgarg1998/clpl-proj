@@ -1,72 +1,7 @@
 var master = {};
-$('#input-excel').change(function (e) {
-    var reader = new FileReader();
 
-    reader.readAsArrayBuffer(e.target.files[0]);
-
-    reader.onload = function (e) {
-        var data = new Uint8Array(reader.result);
-        var workbook = XLSX.read(data, { type: 'array' });
-        // console.log(workbook);
-
-        var mySheet = workbook.Sheets[workbook.SheetNames[0]];
-        var sheet_json = XLSX.utils.sheet_to_json(mySheet);
-
-        
-        sheet_json.forEach(el => {
-            // console.log(el);
-            const master_key = el['COMPANY NAME'] + '-' + el['BARCODE'];
-            el['BARCODE'] = el['BARCODE'].toString();
-            el['DATE'] = DateToString(ExcelDateToJSDate(el['DATE']));
-            el['PRICE'] = el['PRICE'].toString();
-            addToMaster(master_key, el);
-        });
-        
-        // console.log(sheet_json);
-        // console.log(master);
-
-        var new_json = [];
-
-        for(var key in master) {
-            new_json.push(master[key]);
-        }
-        // console.log(new_json);
-        // var row_count = sheet_json.length;
-        // var date_format = 'dd/mm/yyyy';
-        // var date_column = 'G';
-        // var price_column = 'F';
-        var new_sheet = XLSX.utils.json_to_sheet(new_json);
-
-        // for (let i = 2; i <= row_count + 1; i++) {
-        //     string_date = ExcelDateToJSDate(new_sheet[date_column + i].v);
-        //     new_sheet[date_column + i].t = 's';
-        //     new_sheet[date_column + i].v = DateToString(string_date);
-        //     // console.log(new_sheet[date_column + i]);
-        // }
-
-        // for (let i = 2; i <= row_count + 1; i++) {
-        //     new_sheet[price_column + i].v = new_sheet[price_column + i].v.toString() + '.00';
-        //     new_sheet[price_column + i].t = 's';
-        // }
-
-        var new_workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(new_workbook, new_sheet, "New Sheet");
-
-        // console.log(new_sheet);
-
-        var wbout = XLSX.write(new_workbook, { bookType: 'xlsx', type: 'binary' });
-        function s2ab(s) {
-            var buf = new ArrayBuffer(s.length); //convert s to arrayBuffer
-            var view = new Uint8Array(buf);  //create uint8array as viewer
-            for (var i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF; //convert to octet
-            return buf;
-        }
-        saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), 'test.xlsx');
-    }
-});
-
-addToMaster = function(master_key, el) {
-    if(master_key in master) {
+addToMaster = function (master_key, el) {
+    if (master_key in master) {
         master[master_key]['QTY'] += el['QTY'];
     } else
         master[master_key] = el;
@@ -102,39 +37,75 @@ DateToString = function (today) {
     if (mm < 10) {
         mm = '0' + mm;
     }
-    return (mm + '/' + yyyy);
+    return (mm + ' / ' + yyyy);
 }
 
+findWord = function (word, str) {
+    return str.split(' ').some(function (w) { return w === word })
+}
 
- // ----------------------------------------------------------
+$('#input-excel').change(function (e) {
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(e.target.files[0]);
 
-// if(typeof require !== 'undefined') XLSX = require('xlsx');
-// var workbook = XLSX.readFile('file.xlsx');
+    reader.onload = function (e) {
+        var data = new Uint8Array(reader.result);
+        var workbook = XLSX.read(data, { type: 'array' });
+        var sheet = workbook.Sheets[workbook.SheetNames[0]];
+        var sheet_json = XLSX.utils.sheet_to_json(sheet);
 
-// var mySheet = workbook.Sheets[workbook.SheetNames[0]];
-// var sheet_json = XLSX.utils.sheet_to_json(mySheet);
+        var barcode_column = 'z';
+        var date_column = 'z';
+        var price_column = 'z';
 
+        var el = sheet_json[0];
+        Object.keys(el).forEach(function (key, index) {
+            if (findWord('MRP', el))
+                price_column = el;
+            if (findWord('EAN', el))
+                barcode_column = el;
+            if (findWord('MFD', el))
+                date_column = el;
+        });
 
-// var row_count = sheet_json.length;
-// var date_format = 'dd/mm/yyyy';
-// var date_column = 'G';
-// var price_column = 'F';
-// var new_sheet = XLSX.utils.json_to_sheet(sheet_json);
+        if (barcode_column === 'z')
+            console.log(`Barcode Column not found. Should have the work "EAN".`);
+        if (date_column === 'z')
+            console.log(`Date Column not found. Should have the word "MFD".`);
+        if (price_column === 'z')
+            console.log(`MRP column not found. Should have the word "MRP".`)
 
-// for(let i=2; i <= row_count+1; i++) {
-//     string_date = ExcelDateToJSDate(new_sheet[date_column + i].v);
-//     new_sheet[date_column + i].t = 's';
-//     new_sheet[date_column + i].v = DateToString(string_date);
-//     console.log(new_sheet[date_column + i]);
-// }
+        console.log(`barcode_column: ${barcode_column}`);
+        console.log(`date_column: ${date_column}`);
+        console.log(`price_column: ${price_column}`);
 
-// for(let i=2; i <= row_count+1; i++) {
-//     new_sheet[price_column + i].v = new_sheet[price_column + i].v.toString() + '.00';
-//     new_sheet[price_column + i].t = 's';
-// }
+        sheet_json.forEach(el => {
+            // console.log(el);
+            const master_key = el[barcode_column];
+            el[barcode_column] = el[barcode_column].toString();
+            el[date_column] = DateToString(ExcelDateToJSDate(el[date_column]));
+            el[price_column] = parseFloat(el[price_column]).toFixed(2);
+            addToMaster(master_key, el);
+        });
 
-// var new_workbook = XLSX.utils.book_new();
-// XLSX.utils.book_append_sheet(new_workbook, new_sheet, "New Sheet");
-// // console.log(new_workbook.Sheets[new_workbook.SheetNames[0]].G4);
+        var new_json = [];
+        for (var key in master) {
+            new_json.push(master[key]);
+        }
 
-// XLSX.writeFile(new_workbook, 'out.xlsx');
+        var new_sheet = XLSX.utils.json_to_sheet(new_json);
+
+        var new_workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(new_workbook, new_sheet, "New Sheet");
+        var wbout = XLSX.write(new_workbook, { bookType: 'xlsx', type: 'binary' });
+
+        function s2ab(s) {
+            var buf = new ArrayBuffer(s.length); //convert s to arrayBuffer
+            var view = new Uint8Array(buf);  //create uint8array as viewer
+            for (var i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF; //convert to octet
+            return buf;
+        }
+        saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), 'test.xlsx');
+    }
+});
+
