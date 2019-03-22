@@ -94,8 +94,8 @@ $('#input-excel').change(function (e) {
         sheet_json.forEach(el => {
             // console.log(el);
             el[barcode_column] = el[barcode_column].toString();
-            const master_key = el[barcode_column];
             el[date_column] = DateToString(ExcelDateToJSDate(el[date_column]));
+            const master_key = el[barcode_column] + el[date_column];
             el[price_column] = parseFloat(el[price_column]).toFixed(2);
             el[collect_column] = "";
             addToMaster(master_key, el);
