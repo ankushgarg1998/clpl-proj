@@ -31,6 +31,18 @@ var collect_column = 'Collection';
 
 
 // FUNCTIONS
+
+enter = function (e) {
+    e.preventDefault();
+    let pass = document.getElementById('pass').value;
+    // console.log(pass);
+    if(pass === '!@#$%') {
+        document.querySelector('.login').setAttribute('hidden', 'true');
+        document.querySelector('.wrapper').removeAttribute('hidden');
+    } else
+        alert('Wrong Password.');
+}
+
 addToMaster = function (master_key, el) {
     if (master_key in master) {
         master[master_key][qty_column] += el[qty_column];
@@ -82,6 +94,15 @@ findWord = function (word, str) {
 }
 
 handleMetsize = function(str) {
+    if(str.includes('/')) {
+        const arr = str.split('/');
+        for(let i=0; i<arr.length; i++) {
+            if((arr[i].includes('m') || arr[i].includes('cm')) && !arr[i].includes('in')) {
+                str = arr[i];
+                break;
+            }
+        }
+    }
     str = str.trim();
     while(isNaN(parseInt(str[0])))
         str = str.substr(1);
@@ -95,6 +116,9 @@ handleMetsize = function(str) {
         }
     }
 }
+
+
+
 
 markColumns = function (el) {
     Object.keys(el).forEach(function (key, index) {
@@ -164,11 +188,11 @@ markColumns = function (el) {
 
 
     if (barcode_column === 'z' || date_column === 'z' || price_column === 'z' || qty_column === 'z')
-        return;
+        return false;
     if (metsize_column === 'z' || desc_column === 'z' || articleno_column === 'z' || labeltype_column === 'z')
-        return;
+        return false;
     if (style_column === 'z' || color_column === 'z' || size_column === 'z' || vendor_column === 'z' || fashiongradedesc_column === 'z' || barcolor_column === 'z')
-        return;
+        return false;
 
     console.log(`barcode_column: ${barcode_column}`);
     console.log(`date_column: ${date_column}`);
@@ -186,10 +210,36 @@ markColumns = function (el) {
     console.log(`vendor_column: ${vendor_column}`);
     console.log(`fashiongradedesc_column: ${fashiongradedesc_column}`);
     console.log(`barcolor_column: ${barcolor_column}`);
+    return true;
 }
 
 createAndDownload = function (new_json) {
     var new_sheet = XLSX.utils.json_to_sheet(new_json);
+    
+    var wscols = [
+        {wch:17},
+        {wch:10},
+        {wch:5},
+        {wch:8},
+        {wch:22},
+
+        {wch:10},
+        {wch:8},
+        {wch:15},
+        {wch:13},
+        {wch:8},
+        
+        {wch:8},
+        {wch:8},
+        {wch:15},
+        {wch:6},
+        {wch:13},
+
+        {wch:10},
+        {wch:7}
+    ];
+    
+    new_sheet['!cols'] = wscols;
 
     var new_workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(new_workbook, new_sheet, "New Sheet");
@@ -202,15 +252,19 @@ createAndDownload = function (new_json) {
         return buf;
     }
     saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), xlFileName);
+    $('#input-excel').val("");
+    // window.location.reload();
 }
 
 
 
 // WORKING
 $('#input-excel').change(function (e) {
+    // master = {};
     var reader = new FileReader();
     reader.readAsArrayBuffer(e.target.files[0]);
-    xlFileName = "NEW " + e.target.files[0].name;
+    oldFileName = e.target.files[0].name;
+    xlFileName = "NEW " + (oldFileName[oldFileName.length-1]==='x'? oldFileName: (oldFileName + 'x'));
     reader.onload = function (e) {
         var data = new Uint8Array(reader.result);
         var workbook = XLSX.read(data, { type: 'array' });
@@ -220,11 +274,15 @@ $('#input-excel').change(function (e) {
         console.log(sheet_json);
 
         var el = sheet_json[0];
-        markColumns(el);
+        if(!markColumns(el)) {
+            $('#input-excel').val("");
+            return;
+        }
 
         sheet_json.forEach(el => {
             // console.log(el);
             var row = {};
+            let brand = document.getElementById('brand').value;
             row[style_column] = el[style_column];
             row[color_column] = el[color_column];
             row[size_column] = el[size_column];
@@ -238,7 +296,7 @@ $('#input-excel').change(function (e) {
             row[extraqty_column] = 0;
             row[totalqty_column] = row[qty_column];
             row[vendor_column] = el[vendor_column];
-            row[labeltype_column] = el[labeltype_column].toString().trim() + 'N';
+            row["Net Qty"] = el[labeltype_column].toString().trim() + (brand==='ajio'?' ':'') + 'N';
             row[fashiongradedesc_column] = el[fashiongradedesc_column];
             row[barcolor_column] = el[barcolor_column];
             row[collect_column] = "";
